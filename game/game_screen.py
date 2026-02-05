@@ -5,6 +5,7 @@ Gestion de l'écran de jeu.
 import pygame
 import config
 from game.player import Player
+from game.bot import Bot
 
 class GameScreen:
     """Représente l'écran de jeu."""
@@ -19,8 +20,12 @@ class GameScreen:
         self.screen = screen
         self._load_assets()
         self.player = Player(
-            x=screen.get_width() // 2,
-            y=screen.get_height() // 2
+            x=screen.get_width() * 0.25,
+            y=screen.get_height() //2
+        )
+        self.bot = Bot(
+            x=screen.get_width() * 0.5,    
+            y=screen.get_height() //2
         )
 
     def _load_assets(self):
@@ -60,5 +65,8 @@ class GameScreen:
         self.player.handle_movement(keys)
         self.player.update(delta_time)
         self.player.draw(self.screen)
+
+        self.bot.update(delta_time)
+        self.bot.draw(self.screen)
 
         return config.STATE_GAME

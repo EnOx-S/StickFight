@@ -14,26 +14,54 @@ class Player:
         self.pos_x = float(x)
         self.pos_y = float(y)
         self.speed = 5
-        
+
         # Dictionnaire pour stocker les sprites par état
         self.sprites = {}  # {'idle': AnimatedSprite, 'walk_l': AnimatedSprite, 'walk_r': AnimatedSprite, ...}
         self.current_state = 'idle'
         self.current_action = 'idle'
         self.sprite = None
-        
+
         # Variables de mouvement
         self.move_dir = 0
         self.velocity_x = 0
-        
+
+        # Lock pour animations non interruptibles (combo, attaque, etc.)
+        self.locked = False
+
         # Charger les animations
         self._load_animations()
-    
+
     def _load_animations(self):
         self.load_animation("idle",   "assets/images/player/idle.png",   rows=8, animation_speed=0.12)
         self.load_animation("walk_l", "assets/images/player/walk_l.png", rows=8, animation_speed=0.15)
         self.load_animation("walk_r", "assets/images/player/walk_r.png", rows=8, animation_speed=0.15)
 
-    def load_animation(self, state, spritesheet_path, sprite_width=512, sprite_height=512, cols=1, rows=8, animation_speed=0.1):
+        # Charger la spritesheet combo avec plusieurs sous-animations
+        sheet_combo = Spritesheet("assets/images/player/combo.png")
+        all_combo_frames = sheet_combo.get_sprites_from_grid(
+            sprite_width=512,
+            sprite_height=512,
+            cols=1,
+            rows=60  # 3 combos de 20 frames chacune
+        )
+
+        # Découper correctement les sous-animations
+        combo_animations = {
+            "punch": all_combo_frames[0:5],
+        }
+
+        # Ajouter chaque combo dans self.sprites
+        for name, frames in combo_animations.items():
+            self.sprites[name] = AnimatedSprite(
+                frames=frames,
+                x=self.start_x,
+                y=self.start_y,
+                animation_speed=0.2,
+                loop=False  # combo = one-shot
+            )
+
+    def load_animation(self, state, spritesheet_path, sprite_width=512, sprite_height=512,
+                       cols=1, rows=8, animation_speed=0.1):
         """
         Charge une animation pour un état donné.
         """
@@ -45,7 +73,7 @@ class Player:
                 cols=cols,
                 rows=rows
             )
-            
+
             self.sprites[state] = AnimatedSprite(
                 frames=frames,
                 x=self.start_x,
@@ -53,14 +81,23 @@ class Player:
                 animation_speed=animation_speed,
                 loop=True
             )
-            
+
             if self.sprite is None or state == 'idle':
                 self.sprite = self.sprites[state]
-                
+
         except FileNotFoundError:
             print(f"Erreur: Le spritesheet '{spritesheet_path}' n'a pas été trouvé.")
-    
+
     def handle_movement(self, keys):
+        # Si une animation lock est active (combo), on ignore le mouvement
+        if keys[pygame.K_e] and not self.locked:
+            self.play_action("punch")
+
+        if self.locked:
+            self.move_dir = 0
+            self.velocity_x = 0
+            return
+
         self.move_dir = 0
         self.velocity_x = 0
 
@@ -74,6 +111,9 @@ class Player:
         self._update_action_from_movement()
 
     def _update_action_from_movement(self):
+        if self.locked:
+            return
+
         if self.move_dir == -1:
             self.set_action("walk_l")
         elif self.move_dir == 1:
@@ -83,38 +123,63 @@ class Player:
 
     def set_action(self, action):
         """
-        Définit l'action à effectuer.
+        Définit l'action à effectuer si pas lockée.
+        """
+        if not self.locked and action in self.sprites:
+            self.current_action = action
+
+    def play_action(self, action):
+        """
+        Joue une animation non interruptible (combo, attaque, etc.).
         """
         if action in self.sprites:
             self.current_action = action
-    
+            self.locked = True
+
+            # Changer le sprite courant
+            self.sprite.stop()
+            self.sprite.frames = self.sprites[action].frames
+            self.sprite.reset()
+            self.sprite.loop = self.sprites[action].loop
+            self.sprite.play()
+
     def _update_state(self):
+        # Ne rien changer si locked et qu'on est dans la combo
+        if self.locked and self.current_state == self.current_action:
+            return
+
         if self.current_action != self.current_state:
             current_pos = (self.pos_x, self.pos_y)
             if self.sprite:
                 self.sprite.stop()
                 self.sprite.reset()
-            
+
             self.current_state = self.current_action
             new_sprite = self.sprites[self.current_state]
-            
+
             # Conserver la position actuelle
             new_sprite.rect.topleft = (int(current_pos[0]), int(current_pos[1]))
-            
+
             self.sprite = new_sprite
             self.sprite.play()
-    
+
     def update(self, delta_time):
         self._update_state()
-        
-        # Appliquer le mouvement avec position float pour fluidité
-        self.pos_x += self.velocity_x * delta_time * 60  # 60 pour compenser delta_time
+
+        # Appliquer le mouvement
+        self.pos_x += self.velocity_x * delta_time * 60
         self.sprite.rect.x = int(self.pos_x)
         self.sprite.rect.y = int(self.pos_y)
-        
+
+        # Mettre à jour le sprite
         self.sprite.update(delta_time)
         self.position = self.sprite.rect.topleft
-    
+
+        # Si animation non loop terminée -> revenir à idle
+        if self.locked and not self.sprite.loop and self.sprite.is_finished:
+            self.locked = False
+            self.set_action("idle")
+
     def draw(self, screen):
         if self.sprite:
             screen.blit(self.sprite.image, self.sprite.rect)
@@ -125,15 +190,15 @@ class Player:
         for sprite in self.sprites.values():
             sprite.rect.topleft = (x, y)
         self.position = (x, y)
-    
+
     def play_animation(self):
         if self.sprite:
             self.sprite.play()
-    
+
     def stop_animation(self):
         if self.sprite:
             self.sprite.stop()
-    
+
     def reset_animation(self):
         if self.sprite:
             self.sprite.reset()
