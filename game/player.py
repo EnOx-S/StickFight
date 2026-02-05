@@ -2,7 +2,6 @@ import pygame
 from animsprite_pygame import Spritesheet, AnimatedSprite
 import config
 
-
 class Player:
     def __init__(self, x=0, y=0):
         """
@@ -27,6 +26,7 @@ class Player:
 
         # Lock pour animations non interruptibles (combo, attaque, etc.)
         self.locked = False
+        self.attack_pressed = False
 
         # Charger les animations
         self._load_animations()
@@ -56,8 +56,8 @@ class Player:
                 frames=frames,
                 x=self.start_x,
                 y=self.start_y,
-                animation_speed=0.2,
-                loop=False  # combo = one-shot
+                animation_speed=0.075,
+                loop=False
             )
 
     def load_animation(self, state, spritesheet_path, sprite_width=512, sprite_height=512,
@@ -90,8 +90,11 @@ class Player:
 
     def handle_movement(self, keys):
         # Si une animation lock est active (combo), on ignore le mouvement
-        if keys[pygame.K_e] and not self.locked:
+        if keys[pygame.K_e] and not self.attack_pressed and not self.locked:
             self.play_action("punch")
+            self.attack_pressed = True
+        elif not keys[pygame.K_e]:
+            self.attack_pressed = False
 
         if self.locked:
             self.move_dir = 0
@@ -136,11 +139,15 @@ class Player:
             self.current_action = action
             self.locked = True
 
-            # Changer le sprite courant
-            self.sprite.stop()
-            self.sprite.frames = self.sprites[action].frames
-            self.sprite.reset()
-            self.sprite.loop = self.sprites[action].loop
+            # Basculer directement sur le sprite d'action (one-shot)
+            current_pos = (self.pos_x, self.pos_y)
+            new_sprite = self.sprites[action]
+            new_sprite.stop()
+            new_sprite.reset()
+            new_sprite.loop = False
+            new_sprite.rect.topleft = (int(current_pos[0]), int(current_pos[1]))
+            self.sprite = new_sprite
+            self.current_state = action
             self.sprite.play()
 
     def _update_state(self):
