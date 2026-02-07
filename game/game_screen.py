@@ -1,5 +1,5 @@
 """
-Gestion de l'écran de jeu.
+Gestion de l'ecran de jeu.
 """
 
 import pygame
@@ -7,13 +7,14 @@ import config
 from game.player import Player
 from game.bot import Bot
 
+
 class GameScreen:
-    """Représente l'écran de jeu."""
-    
+    """Represente l'ecran de jeu."""
+
     def __init__(self, screen):
         """
-        Initialise l'écran de jeu.
-        
+        Initialise l'ecran de jeu.
+
         Args:
             screen (pygame.Surface): La surface d'affichage principale
         """
@@ -21,52 +22,96 @@ class GameScreen:
         self._load_assets()
         self.player = Player(
             x=screen.get_width() * 0.25,
-            y=screen.get_height() //2
+            y=screen.get_height() // 2
         )
         self.bot = Bot(
-            x=screen.get_width() * 0.5,    
-            y=screen.get_height() //2
+            x=screen.get_width() * 0.5,
+            y=screen.get_height() // 2
         )
 
     def _load_assets(self):
-        """Charge toutes les images nécessaires pour le jeu."""
+        """Charge toutes les images necessaires pour le jeu."""
         game_bg_image = pygame.image.load(config.GAME_BG_PATH)
-        # Redimensionner le fond à la taille de l'écran
         self.background_image = pygame.transform.scale(
             game_bg_image,
             (self.screen.get_width(), self.screen.get_height())
         )
         self.background_rect = self.background_image.get_rect()
 
+        base_empty = pygame.image.load(config.HUD_EMPTY_BAR_PATH).convert_alpha()
+        base_full = pygame.image.load(config.HUD_FULL_BAR_PATH).convert_alpha()
+
+        scaled_width = int(base_full.get_width() * config.HUD_SCALE)
+        scaled_height = int(base_full.get_height() * config.HUD_SCALE)
+
+        self.health_empty_image = pygame.transform.scale(base_empty, (scaled_width, scaled_height))
+        self.health_full_image = pygame.transform.scale(base_full, (scaled_width, scaled_height))
+
+    def _draw_health_bar(self, x, y, health, max_health, anchor_right=False):
+        """
+        Affiche la barre vide complete et rogne la barre pleine selon la vie.
+        """
+        bar_width = self.health_full_image.get_width()
+        bar_height = self.health_full_image.get_height()
+
+        if max_health <= 0:
+            health_ratio = 0.0
+        else:
+            health_ratio = max(0.0, min(1.0, health / max_health))
+
+        health_width = int(bar_width * health_ratio)
+        self.screen.blit(self.health_empty_image, (x, y))
+
+        if health_width <= 0:
+            return
+
+        if anchor_right:
+            source_x = bar_width - health_width
+            source_rect = pygame.Rect(source_x, 0, health_width, bar_height)
+            target_x = x + source_x
+            self.screen.blit(self.health_full_image, (target_x, y), source_rect)
+            return
+
+        source_rect = pygame.Rect(0, 0, health_width, bar_height)
+        self.screen.blit(self.health_full_image, (x, y), source_rect)
+
     def draw(self, events, delta_time):
         """
-        Dessine l'écran de jeu et gère les interactions.
-        
+        Dessine l'ecran de jeu et gere les interactions.
+
         Args:
-            events (list): Liste des événements pygame
-            
+            events (list): Liste des evenements pygame
+
         Returns:
-            str: L'état suivant ("game" ou "menu")
+            str: L'etat suivant ("game" ou "menu")
         """
-        # Remplir l'écran de noir
         self.screen.fill(config.COLOR_BLACK)
-        
-        # Afficher le fond
         self.screen.blit(self.background_image, self.background_rect)
 
-        # Gérer les événements
         for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    return config.STATE_MENU
-        
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return config.STATE_MENU
+
         keys = pygame.key.get_pressed()
 
         self.player.handle_movement(keys)
         self.player.update(delta_time)
-        self.player.draw(self.screen)
 
         self.bot.update(delta_time)
+
+        # Detection de coup type "raycast" en X depuis le joueur vers le bot.
+        self.player.try_hit_target(self.bot)
+
+        self.player.draw(self.screen)
         self.bot.draw(self.screen)
+
+        bar_width = self.health_full_image.get_width()
+        player_x = config.HUD_MARGIN_X
+        player_y = config.HUD_MARGIN_Y
+        bot_x = self.screen.get_width() - bar_width - config.HUD_MARGIN_X
+        bot_y = config.HUD_MARGIN_Y
+
+        self._draw_health_bar(player_x, player_y, self.player.health, self.player.max_health)
+        self._draw_health_bar(bot_x, bot_y, self.bot.health, self.bot.max_health, anchor_right=True)
 
         return config.STATE_GAME
