@@ -41,24 +41,6 @@ class GameScreen:
         base_empty = pygame.image.load(config.HUD_EMPTY_BAR_PATH).convert_alpha()
         base_full = pygame.image.load(config.HUD_FULL_BAR_PATH).convert_alpha()
 
-        scaled_width = int(base_full.get_width() * config.HUD_SCALE)
-        scaled_height = int(base_full.get_height() * config.HUD_SCALE)
-
-        self.health_empty_image = pygame.transform.scale(base_empty, (scaled_width, scaled_height))
-        self.health_full_image = pygame.transform.scale(base_full, (scaled_width, scaled_height))
-
-    def _load_assets(self):
-        """Charge toutes les images necessaires pour le jeu."""
-        game_bg_image = pygame.image.load(config.GAME_BG_PATH)
-        self.background_image = pygame.transform.scale(
-            game_bg_image,
-            (self.screen.get_width(), self.screen.get_height())
-        )
-        self.background_rect = self.background_image.get_rect()
-
-        base_empty = pygame.image.load(config.HUD_EMPTY_BAR_PATH).convert_alpha()
-        base_full = pygame.image.load(config.HUD_FULL_BAR_PATH).convert_alpha()
-
         screen_ratio = self.screen.get_width() / config.BASE_SCREEN_WIDTH
         hud_scale = config.HUD_SCALE * screen_ratio
 
@@ -122,6 +104,13 @@ class GameScreen:
                 return config.STATE_MENU
 
         keys = pygame.key.get_pressed()
+
+        if self.player.pos_x < self.bot.pos_x:
+            self.player.facing_dir = 1
+            self.bot.facing_dir = -1
+        else:
+            self.player.facing_dir = -1
+            self.bot.facing_dir = 1
 
         self.player.handle_movement(keys)
         self.player.update(delta_time)

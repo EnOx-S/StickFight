@@ -146,7 +146,7 @@ class Player:
             self.velocity_x = 0
             return
 
-        if keys[pygame.K_z] and not self.jump_pressed and self.on_ground and not self.locked:
+        if keys[pygame.K_SPACE] and not self.jump_pressed and self.on_ground and not self.locked:
             self.velocity_y = -self.jump_speed
             self.on_ground = False
             self.jump_pressed = True
@@ -444,7 +444,12 @@ class Player:
 
     def draw(self, screen):
         if self.sprite:
-            screen.blit(self.sprite.image, self.sprite.rect)
+            image = self.sprite.image
+            if self.facing_dir < 0:
+                image = pygame.transform.flip(image, True, False)
+
+            screen.blit(image, self.sprite.rect)
+
 
     def set_position(self, x, y):
         self.pos_x = float(x)
