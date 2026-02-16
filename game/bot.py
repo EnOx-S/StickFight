@@ -15,8 +15,8 @@ class Bot(Player):
         self.too_close_distance = 40
         self.far_distance = self.attack_range + 30
 
-        self.decision_delay_min = 0.15
-        self.decision_delay_max = 0.35
+        self.decision_delay_min = 0.1
+        self.decision_delay_max = 0.2
         self.decision_timer = 0.0
 
         self.attack_global_cooldown = 0.5
@@ -31,7 +31,7 @@ class Bot(Player):
         self.tempo_multiplier = 1.0
 
         self.analysis_timer = 0.0
-        self.analysis_window = 4.0
+        self.analysis_window = 0.1
 
         self.player_recent_attacks = 0
         self.player_jump_counter = 0
@@ -42,13 +42,13 @@ class Bot(Player):
         # =============================
         # HUMANISATION
         # =============================
-        self.error_chance = 0.05
+        self.error_chance = 0.01
 
         # =============================
         # SAUT
         # =============================
-        self.jump_probability = 0.25
-        self.air_attack_probability = 0.5
+        self.jump_probability = 0.01
+        self.air_attack_probability = 0.3
 
         # Regarde à gauche par défaut
         self.facing_dir = -1
@@ -288,21 +288,34 @@ class Bot(Player):
     # ======================================================
 
     def update(self, delta_time):
+        if not(self.target.is_dead):
+            self.decision_timer = max(0.0, self.decision_timer - delta_time)
+            self.attack_cooldown_remaining = max(
+                0.0,
+                self.attack_cooldown_remaining - delta_time
+            )
 
-        self.decision_timer = max(0.0, self.decision_timer - delta_time)
-        self.attack_cooldown_remaining = max(
-            0.0,
-            self.attack_cooldown_remaining - delta_time
-        )
+            self.analysis_timer += delta_time
+            self.observe_player()
 
-        self.analysis_timer += delta_time
-        self.observe_player()
-
-        if self.analysis_timer >= self.analysis_window:
-            self._adapt_style()
-            self.analysis_timer = 0.0
-            self.player_recent_attacks = 0
-            self.player_jump_counter = 0
-            self.player_air_attack_counter = 0
-
+            if self.analysis_timer >= self.analysis_window:
+                self._adapt_style()
+                self.analysis_timer = 0.0
+                self.player_recent_attacks = 0
+                self.player_jump_counter = 0
+                self.player_air_attack_counter = 0
+        else:
+            self.set_action("idle")
         super().update(delta_time)
+    def reset(self, target):
+        super().reset()
+        self.target = target
+        self.current_ai_state = "idle"
+        self.decision_timer = 0.0
+        self.attack_cooldown_remaining = 0.0
+        self.analysis_timer = 0.0
+        self.player_recent_attacks = 0
+        self.player_jump_counter = 0
+        self.player_air_attack_counter = 0
+        self.style = "balanced"
+        self.tempo_multiplier = 1.0

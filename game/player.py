@@ -472,3 +472,26 @@ class Player:
     def reset_animation(self):
         if self.sprite:
             self.sprite.reset()
+
+    def reset(self):
+        self.pos_x = self.start_x
+        self.pos_y = self.start_y
+        self.ground_y = float(self.start_y)
+        self.health = self.max_health
+        self.is_dead = False
+        self.on_ground = True
+        self.velocity_x = 0
+        self.velocity_y = 0
+        self.move_dir = 0
+        self.knockback_remaining = 0.0
+        self.knockback_dir = 0
+        self.stun_remaining = 0.0
+        self.locked = False
+        self.attack_pressed = False
+        self.kick_pressed = False
+        self.jump_pressed = False
+        self.attack_hit_done = False
+        self.hits_taken_since_knockback = 0
+        self.next_attack_index = 0
+        self.set_action("idle")
+        self.reset_animation()

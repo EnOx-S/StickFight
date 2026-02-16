@@ -57,6 +57,19 @@ class GameScreen:
         self.health_bar_width = scaled_width
         self.health_bar_height = scaled_height
 
+        self.ko_image = pygame.image.load(config.KO_IMAGE_PATH).convert_alpha()
+
+        # Taille finale du KO (40% largeur écran)
+        ko_target_width = int(self.screen.get_width() * 0.55)
+        ratio = ko_target_width / self.ko_image.get_width()
+        ko_target_height = int(self.ko_image.get_height() * ratio)
+
+        self.ko_final_size = (ko_target_width, ko_target_height)
+
+        self.ko_active = False
+        self.ko_timer = 0.0
+
+
     def _draw_health_bar(self, x, y, health, max_health, anchor_right=False):
         """
         Affiche la barre vide complete et rogne la barre pleine selon la vie.
@@ -96,12 +109,13 @@ class GameScreen:
         Returns:
             str: L'etat suivant ("game" ou "menu")
         """
-        self.screen.fill(config.COLOR_BLACK)
-        self.screen.blit(self.background_image, self.background_rect)
-
         for event in events:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.reset()
                 return config.STATE_MENU
+
+        self.screen.fill(config.COLOR_BLACK)
+        self.screen.blit(self.background_image, self.background_rect)
 
         keys = pygame.key.get_pressed()
 
@@ -112,7 +126,8 @@ class GameScreen:
             self.player.facing_dir = -1
             self.bot.facing_dir = 1
 
-        self.player.handle_movement(keys)
+        if not self.ko_active:
+            self.player.handle_movement(keys)
         self.player.update(delta_time)
 
         self.bot.handle_movement()
@@ -124,6 +139,12 @@ class GameScreen:
 
         self.player.draw(self.screen)
         self.bot.draw(self.screen)
+
+        if not self.ko_active and (self.player.health <= 0 or self.bot.health <= 0):
+            self.ko_active = True
+            self.ko_timer = 0.0
+        if self.ko_active:
+            self._draw_ko(delta_time)
 
         margin_x = int(self.screen.get_width() * config.HUD_MARGIN_X_RATIO)
         margin_y = int(self.screen.get_height() * config.HUD_MARGIN_Y_RATIO)
@@ -144,3 +165,40 @@ class GameScreen:
         self._draw_health_bar(bot_x, bot_y, self.bot.health, self.bot.max_health, anchor_right=True)
 
         return config.STATE_GAME
+
+    def _draw_ko(self, delta_time):
+        self.ko_timer += delta_time
+
+        # Durée animation
+        anim_duration = 0.4
+
+        t = min(self.ko_timer / anim_duration, 1.0)
+
+        # Courbe violente (ease out back)
+        overshoot = 1.3
+        scale = (
+            1 +
+            (overshoot - 1) * (1 - t) * pygame.math.lerp(1, 0, t)
+        )
+
+        base_w, base_h = self.ko_final_size
+        w = int(base_w * scale)
+        h = int(base_h * scale)
+
+        ko_scaled = pygame.transform.scale(self.ko_image, (w, h))
+
+        x = self.screen.get_width() // 2 - w // 2
+        y = self.screen.get_height() // 2 - h // 2
+
+        # petit shake
+        shake = int(8 * (1 - t))
+        x += pygame.time.get_ticks() % 2 * shake - shake // 2
+
+        self.screen.blit(ko_scaled, (x, y))
+
+    def reset(self):
+        """Remet le jeu à zéro."""
+        self.player.reset()
+        self.bot.reset(target=self.player)
+        self.ko_active = False
+        self.ko_timer = 0.0
