@@ -15,6 +15,7 @@ COLOR_WHITE = (255, 255, 255)
 # Chemins des assets
 ASSETS_PATH = "assets/images/"
 BG_PATH = ASSETS_PATH + "main_screen/background.png"
+SETTINGS_PATH = ASSETS_PATH + "settings/background.png"
 GAME_BG_PATH = ASSETS_PATH + "game/background/1.png"
 HUD_EMPTY_BAR_PATH = ASSETS_PATH + "game/hud/empty.png"
 HUD_FULL_BAR_PATH = ASSETS_PATH + "game/hud/full.png"
@@ -26,6 +27,7 @@ CLOSE_BTN_PATH = ASSETS_PATH + "main_screen/quit.png"
 # États de l'écran
 STATE_MENU = "menu"
 STATE_GAME = "game"
+STATE_SETTINGS = "settings"
 STATE_QUIT = "quit"
 
 # Dimensions des boutons
