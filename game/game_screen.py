@@ -11,7 +11,7 @@ from game.bot import Bot
 class GameScreen:
     """Represente l'ecran de jeu."""
 
-    def __init__(self, screen):
+    def __init__(self, screen, background_path=None):
         """
         Initialise l'ecran de jeu.
 
@@ -19,19 +19,22 @@ class GameScreen:
             screen (pygame.Surface): La surface d'affichage principale
         """
         self.screen = screen
+        self.background_path = background_path
         self._load_assets()
         self.player = Player(
             x=screen.get_width() * 0.25,
             y=screen.get_height() // 2
         )
         self.bot = Bot(
-            x=screen.get_width() * 0.5,
+            x=screen.get_width() * 0.75,
             y=screen.get_height() // 2, target=self.player
         )
 
     def _load_assets(self):
         """Charge toutes les images necessaires pour le jeu."""
-        game_bg_image = pygame.image.load(config.GAME_BG_PATH)
+        # Choix du fond : utiliser le chemin passé ou la valeur par défaut
+        bg_path = self.background_path if self.background_path else config.GAME_BG_PATH
+        game_bg_image = pygame.image.load(bg_path)
         self.background_image = pygame.transform.scale(
             game_bg_image,
             (self.screen.get_width(), self.screen.get_height())

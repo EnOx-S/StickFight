@@ -31,7 +31,7 @@ class Bot(Player):
         self.tempo_multiplier = 1.0
 
         self.analysis_timer = 0.0
-        self.analysis_window = 0.1
+        self.analysis_window = 0.05
 
         self.player_recent_attacks = 0
         self.player_jump_counter = 0

@@ -90,10 +90,10 @@ class MenuScreen:
 
         # Gérer les boutons
         if self.bot_button.draw(self.screen):
-            return config.STATE_GAME
+            return config.STATE_MAP_SELECT
         
         if self.settings_button.draw(self.screen):
-            print("SETTINGS - À implémenter")
+            return config.STATE_SETTINGS
         
         if self.quit_button.draw(self.screen):
             return config.STATE_QUIT

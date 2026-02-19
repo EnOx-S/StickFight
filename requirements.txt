@@ -1,2 +1,3 @@
 pygame-ce
 animsprite_pygame
+pygame_widgets
