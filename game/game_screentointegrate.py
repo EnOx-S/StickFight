@@ -11,7 +11,7 @@ from game.bot import Bot
 class GameScreen:
     """Represente l'ecran de jeu."""
 
-    def __init__(self, screen, background_path=None):
+    def __init__(self, screen):
         """
         Initialise l'ecran de jeu.
 
@@ -19,25 +19,20 @@ class GameScreen:
             screen (pygame.Surface): La surface d'affichage principale
         """
         self.screen = screen
-        self.background_path = background_path
         self._load_assets()
         self.player = Player(
             x=screen.get_width() * 0.25,
             y=screen.get_height() // 2
         )
         self.bot = Bot(
-            x=screen.get_width() * 0.75,
+            x=screen.get_width() * 0.5,
             y=screen.get_height() // 2, target=self.player
-        )
-        # Timer
+        )        # Timer
         self.elapsed_time = 0.0
         self.font = pygame.font.Font(None, 60)  # Police par défaut de pygame
-
     def _load_assets(self):
         """Charge toutes les images necessaires pour le jeu."""
-        # Choix du fond : utiliser le chemin passé ou la valeur par défaut
-        bg_path = self.background_path if self.background_path else config.GAME_BG_PATH
-        game_bg_image = pygame.image.load(bg_path)
+        game_bg_image = pygame.image.load(config.GAME_BG_PATH)
         self.background_image = pygame.transform.scale(
             game_bg_image,
             (self.screen.get_width(), self.screen.get_height())
@@ -58,6 +53,7 @@ class GameScreen:
         scaled_height = int(base_full.get_height() * hud_scale)
         charge_scaled_width = int(charge_full.get_width() * hud_scale)
         charge_scaled_height = int(charge_full.get_height() * hud_scale)
+
 
         self.health_empty_image = pygame.transform.scale(
             base_empty, (scaled_width, scaled_height)
@@ -92,7 +88,6 @@ class GameScreen:
 
         self.ko_active = False
         self.ko_timer = 0.0
-
 
     def _draw_timer(self):
         """
@@ -137,8 +132,9 @@ class GameScreen:
         else:
             source_rect = pygame.Rect(0, 0, health_width, bar_height)
             self.screen.blit(self.health_full_image, (x, y), source_rect)
-
-
+        
+        
+    
     def _draw_charge_bar(self, x, y, charge, max_charge, anchor_right=False, is_bot=False):
         """
         Affiche la barre vide complete et rogne la barre pleine selon la charge.
@@ -169,7 +165,6 @@ class GameScreen:
         else:
             source_rect = pygame.Rect(0, 0, charge_width, c_bar_height)
             self.screen.blit(full_image, (x, y), source_rect)
-
 
     def draw(self, events, delta_time):
         """
@@ -225,6 +220,7 @@ class GameScreen:
         bar_height = self.health_bar_height
         c_bar_height = self.charge_bar_height
         c_bar_width = self.charge_bar_width
+
 
         player_x = margin_x
         player_y = margin_y

@@ -26,6 +26,8 @@ KO_IMAGE_PATH = ASSETS_PATH + "game/hud/ko.png"
 BOT_BTN_PATH = ASSETS_PATH + "main_screen/play.png"
 SETTINGS_BTN_PATH = ASSETS_PATH + "main_screen/settings.png"
 CLOSE_BTN_PATH = ASSETS_PATH + "main_screen/quit.png"
+HUD_EMPTY_CHARGE_PATH = ASSETS_PATH + "game/hud/charge_empty.png"
+HUD_FULL_CHARGE_PATH = ASSETS_PATH + "game/hud/charge_full.png"
 
 # États de l'écran
 STATE_MENU = "menu"
@@ -80,4 +82,5 @@ KEY_BINDINGS = {
     "jump": pygame.K_SPACE,
     "attack": pygame.K_e,
     "kick": pygame.K_r,
+    "charge": pygame.K_g,
 }

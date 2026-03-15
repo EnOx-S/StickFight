@@ -128,6 +128,7 @@ class SettingsScreen:
                 ("jump", "Saut"),
                 ("attack", "Coup de poing"),
                 ("kick", "Coup de pied"),
+                ("charge", "Attaque chargée"),
             ]
 
             start_x = 500

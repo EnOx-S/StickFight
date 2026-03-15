@@ -57,23 +57,13 @@ class Player:
         self.locked = False
         self.attack_pressed = False
         self.kick_pressed = False
-        self.parrying = False
         self.jump_pressed = False
+        self.charge_pressed = False
 
         # Charger les animations
         self._load_animations()
         self.attack_actions = [name for name in ("punch", "punch2") if name in self.sprites]
         self.next_attack_index = 0
-        # Charger le son de coup (silencieux si impossible)
-        self.hit_sound = None
-        try:
-            if pygame.mixer.get_init():
-                self.hit_sound = pygame.mixer.Sound("assets/sounds/punch.mp3")
-        except Exception:
-            self.hit_sound = None
-        # Parry charges / cooldown
-        self.parry_charges = config.PARRY_MAX_BLOCKS
-        self.parry_cooldown_remaining = 0.0
 
     def _load_animations(self):
         self.load_animation("idle",   "assets/images/player/idle.png",   rows=8, animation_speed=0.12)
@@ -81,7 +71,6 @@ class Player:
         self.load_animation("walk_r", "assets/images/player/walk_r.png", rows=8, animation_speed=0.15)
         self.load_animation("jump",   "assets/images/player/jump.png",   rows=5, animation_speed=0.2)
         self.load_animation("hit",    "assets/images/player/hit.png",    rows=4, animation_speed=0.09, loop=False)
-        self.load_animation("parry",  "assets/images/player/parry.png",  rows=4, animation_speed=0.08, loop=True)
         self.load_animation("death", "assets/images/player/death.png",   rows=10, animation_speed=0.1, loop=False)
 
         # Charger la spritesheet combo avec plusieurs sous-animations
@@ -149,13 +138,13 @@ class Player:
             return
 
         # Relacher les locks de touches quand les touches sont relees.
-        if not keys[config.KEY_BINDINGS.get("attack", pygame.K_e)]:
+        if not keys[pygame.K_e]:
             self.attack_pressed = False
-        if not keys[config.KEY_BINDINGS.get("kick", pygame.K_r)]:
+        if not keys[pygame.K_r]:
             self.kick_pressed = False
-        if not keys[config.KEY_BINDINGS.get("jump", pygame.K_SPACE)]:
+        if not keys[pygame.K_SPACE]:
             self.jump_pressed = False
-        if not keys[config.KEY_BINDINGS.get("charge", pygame.K_g)]:
+        if not keys[pygame.K_g]:
             self.charge_pressed = False
 
         # Pendant le stun, on ne peut ni bouger ni attaquer.
@@ -164,18 +153,18 @@ class Player:
             self.velocity_x = 0
             return
 
-        if keys[config.KEY_BINDINGS.get("jump", pygame.K_SPACE)] and not self.jump_pressed and self.on_ground and not self.locked:
+        if keys[pygame.K_SPACE] and not self.jump_pressed and self.on_ground and not self.locked:
             self.velocity_y = -self.jump_speed
             self.on_ground = False
             self.jump_pressed = True
 
         # Attaques
-        if keys[config.KEY_BINDINGS.get("attack", pygame.K_e)] and not self.attack_pressed and not self.locked:
+        if keys[pygame.K_e] and not self.attack_pressed and not self.locked:
             self.play_next_attack()
             self.attack_pressed = True
 
         if (
-            keys[config.KEY_BINDINGS.get("kick", pygame.K_r)]
+            keys[pygame.K_r]
             and not self.kick_pressed
             and not self.locked
             and self.kick_cooldown_remaining <= 0
@@ -185,23 +174,9 @@ class Player:
             self.kick_cooldown_remaining = self.kick_cooldown
 
         # Coup puissant avec la charge complète
-        if keys[config.KEY_BINDINGS.get("charge", pygame.K_g)] and not self.charge_pressed and self.charge >= self.max_charge:
+        if keys[pygame.K_g] and not self.charge_pressed and self.charge >= self.max_charge:
             self.execute_charged_attack()
             self.charge_pressed = True
-
-        # Parry (bloquer les coups) -- tant qu'on maintient la touche F
-        f_pressed = keys.get(pygame.K_f, False) if isinstance(keys, dict) else keys[pygame.K_f]
-        # Only allow entering parry if we have charges and no parry cooldown
-        if f_pressed and not self.locked and self.parry_charges > 0 and self.parry_cooldown_remaining <= 0:
-            # Enter parry state while holding F: stop horizontal movement
-            self.parrying = True
-            self.move_dir = 0
-            self.velocity_x = 0
-            self.set_action("parry")
-            return
-        else:
-            if self.parrying:
-                self.parrying = False
 
         if self.locked:
             self.move_dir = 0
@@ -211,11 +186,11 @@ class Player:
         self.move_dir = 0
         self.velocity_x = 0
 
-        if keys[config.KEY_BINDINGS.get("left", pygame.K_q)]:
+        if keys[pygame.K_q]:
             self.move_dir = -1
             self.facing_dir = -1
             self.velocity_x = -self.speed
-        elif keys[config.KEY_BINDINGS.get("right", pygame.K_d)]:
+        elif keys[pygame.K_d]:
             self.move_dir = 1
             self.facing_dir = 1
             self.velocity_x = self.speed
@@ -298,19 +273,6 @@ class Player:
         self.play_action(action)
         self.next_attack_index = (self.next_attack_index + 1) % len(self.attack_actions)
 
-    def execute_charged_attack(self):
-        """
-        Exécute le coup puissant quand la charge est pleine.
-        Ce coup sera appliqué au prochain try_hit_target.
-        """
-        # Jouer l'animation punch (ou kick, selon la préférence)
-        if self.attack_actions:
-            action = self.attack_actions[0]  # Jouer le premier punch
-            self.play_action(action)
-        
-        # Marquer que le prochain hit sera puissant
-        self.charged_attack_active = True
-
     def _start_knockback(self, source_dir, distance=None):
         """Declenche une poussee progressive dans la direction du coup."""
         if self.is_dead:
@@ -340,7 +302,6 @@ class Player:
         self.attack_pressed = False
         self.kick_pressed = False
         self.jump_pressed = False
-        self.charge_pressed = False
         self.kick_cooldown_remaining = 0.0
         self.stun_remaining = 0.0
 
@@ -404,35 +365,6 @@ class Player:
         if not in_front or not close_on_y:
             return False
 
-        # Si la cible est en train de parry (maintient F), bloquer l'attaque
-        if getattr(target, "parrying", False) and target.current_action == "parry":
-            # Consommer une charge de parade
-            try:
-                if hasattr(target, "parry_charges"):
-                    before = target.parry_charges
-                    target.parry_charges = max(0, target.parry_charges - 1)
-                    after = target.parry_charges
-                    print(f"Parry blocked: charges {before} -> {after}")
-                    if target.parry_charges <= 0:
-                        # épuisé -> casser la parade, stun le parryur et activer cooldown
-                        target.parrying = False
-                        target.parry_cooldown_remaining = config.PARRY_COOLDOWN
-                        try:
-                            target.stun_remaining = max(target.stun_remaining, config.PARRY_BREAK_STUN)
-                        except Exception:
-                            pass
-                        print("Parry broken: stun applied, cooldown started")
-                # Attaquant subit un court stun quand son attaque est bloquée
-                self.stun_remaining = max(self.stun_remaining, config.PARRY_STUN)
-                # Marquer l'attaque comme consommée pour éviter de bloquer plusieurs fois
-                try:
-                    self.attack_hit_done = True
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            return False
-
         # Si attaque puissante est active, appliquer les dégâts puissants
         if self.charged_attack_active:
             target.take_damage(
@@ -456,12 +388,6 @@ class Player:
                 self.charge = min(self.max_charge, self.charge + 25)
         
         self.attack_hit_done = True
-        # Jouer le son de coup
-        try:
-            if self.hit_sound:
-                self.hit_sound.play()
-        except Exception:
-            pass
         return True
 
     def _update_state(self):
@@ -489,12 +415,6 @@ class Player:
             self.kick_cooldown_remaining = max(0.0, self.kick_cooldown_remaining - delta_time)
         if self.stun_remaining > 0:
             self.stun_remaining = max(0.0, self.stun_remaining - delta_time)
-        if self.parry_cooldown_remaining > 0:
-            prev = self.parry_cooldown_remaining
-            self.parry_cooldown_remaining = max(0.0, self.parry_cooldown_remaining - delta_time)
-            # When cooldown finishes, restore parry charges
-            if prev > 0 and self.parry_cooldown_remaining <= 0:
-                self.parry_charges = config.PARRY_MAX_BLOCKS
 
         self._update_state()
 
@@ -550,6 +470,19 @@ class Player:
             self.locked = False
             self.set_action("idle")
 
+    def execute_charged_attack(self):
+        """
+        Exécute le coup puissant quand la charge est pleine.
+        Ce coup sera appliqué au prochain try_hit_target.
+        """
+        # Jouer l'animation punch (ou kick, selon la préférence)
+        if self.attack_actions:
+            action = self.attack_actions[0]  # Jouer le premier punch
+            self.play_action(action)
+        
+        # Marquer que le prochain hit sera puissant
+        self.charged_attack_active = True
+
     def draw(self, screen):
         if self.sprite:
             image = self.sprite.image
@@ -598,13 +531,10 @@ class Player:
         self.attack_pressed = False
         self.kick_pressed = False
         self.jump_pressed = False
-        self.parrying = False
-        self.parry_charges = config.PARRY_MAX_BLOCKS
-        self.parry_cooldown_remaining = 0.0
+        self.charge_pressed = False
         self.attack_hit_done = False
         self.hits_taken_since_knockback = 0
         self.next_attack_index = 0
         self.charge = 0
-        self.charge_pressed = False
         self.set_action("idle")
         self.reset_animation()

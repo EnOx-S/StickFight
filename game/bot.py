@@ -168,6 +168,14 @@ class Bot(Player):
                 return "attack"
             return "reposition"
 
+        # Priorité à l'attaque chargée si disponible
+        if (
+            self.charge >= self.max_charge
+            and in_attack_range
+            and random.random() < 0.8
+        ):
+            return "charged_attack"
+
         if (
             in_attack_range
             and self.attack_cooldown_remaining <= 0
@@ -262,6 +270,9 @@ class Bot(Player):
             if self.kick_cooldown_remaining <= 0:
                 self.play_action("kick")
                 self.kick_cooldown_remaining = self.kick_cooldown
+
+        elif self.current_ai_state == "charged_attack":
+            self.execute_charged_attack()
 
         else:
             self.move_dir = 0

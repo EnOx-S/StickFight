@@ -47,7 +47,7 @@ def main():
 
         # Gérer les états
         if current_state == config.STATE_MENU:
-            current_state = menu_screen.draw()
+            current_state = menu_screen.draw(clock.tick(config.FPS) / 1000.0)
             if current_state == config.STATE_QUIT:
                 running = False
         elif current_state == config.STATE_SETTINGS:

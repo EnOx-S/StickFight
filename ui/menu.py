@@ -20,6 +20,12 @@ class MenuScreen:
         self.screen = screen
         self._load_assets()
         self._create_buttons()
+        
+        # Animation variables
+        self.animation_time = 0.0
+        self.animation_duration = 2.0  # Durée en secondes
+        self.zoom_start = 1.5  # Zoom initial (dézoomé)
+        self.zoom_end = 1.0  # Zoom final (100%)
 
     def _load_assets(self):
         """Charge toutes les images nécessaires pour le menu."""
@@ -28,6 +34,13 @@ class MenuScreen:
         
         # Créer les rectangles pour le positionnement
         self.background_rect = self.background_image.get_rect()
+        self.background_rect.center = (
+            self.screen.get_width() / 2,
+            self.screen.get_height() / 2
+        )
+        
+        # Stocker l'image originale pour le zoom
+        self.background_image_original = self.background_image.copy()
 
 
     def _create_buttons(self):
@@ -75,27 +88,59 @@ class MenuScreen:
             config.BUTTON_SCALE
         )
 
-    def draw(self):
+    def draw(self, delta_time=0.0):
         """
         Dessine le menu et gère les interactions.
+        
+        Args:
+            delta_time (float): Temps écoulé depuis la dernière frame en secondes
         
         Returns:
             str: L'état suivant ("menu", "game", ou "quit")
         """
+        # Mettre à jour l'animation
+        if self.animation_time < self.animation_duration:
+            self.animation_time += delta_time
+        
         # Remplir l'écran de noir
         self.screen.fill(config.COLOR_BLACK)
         
-        # Afficher le fond
-        self.screen.blit(self.background_image, self.background_rect)
+        # Calculer le facteur de zoom (interpolation linéaire)
+        zoom_progress = min(self.animation_time / self.animation_duration, 1.0)
+        current_zoom = self.zoom_start + (self.zoom_end - self.zoom_start) * zoom_progress
+        
+        # Appliquer le zoom au fond
+        zoomed_width = int(self.background_image_original.get_width() / current_zoom)
+        zoomed_height = int(self.background_image_original.get_height() / current_zoom)
+        zoomed_image = pygame.transform.scale(self.background_image_original, (zoomed_width, zoomed_height))
+        
+        # Centrer l'image zoomée
+        zoomed_rect = zoomed_image.get_rect(
+            center=(self.screen.get_width() / 2, self.screen.get_height() / 2)
+        )
+        
+        # Afficher le fond zoomé
+        self.screen.blit(zoomed_image, zoomed_rect)
 
-        # Gérer les boutons
-        if self.bot_button.draw(self.screen):
+        # Calculer l'alpha pour les boutons (apparition progressive pendant le zoom - très transparente au début)
+        buttons_progress = min(self.animation_time / self.animation_duration, 1.0)
+        # Utiliser une courbe d'easing pour que ce soit plus transparent au début
+        eased_progress = buttons_progress ** 3  # Progression cubique pour effet plus progressif
+        alpha = int(255 * eased_progress)
+        
+        # Afficher les boutons avec alpha
+        bot_clicked = self.bot_button.draw(self.screen, alpha)
+        settings_clicked = self.settings_button.draw(self.screen, alpha)
+        quit_clicked = self.quit_button.draw(self.screen, alpha)
+        
+        # Gérer les clics des boutons - toujours vérifier mais seulement retourner après l'anim
+        if bot_clicked and buttons_progress >= 1.0:
             return config.STATE_MAP_SELECT
         
-        if self.settings_button.draw(self.screen):
+        if settings_clicked and buttons_progress >= 1.0:
             return config.STATE_SETTINGS
         
-        if self.quit_button.draw(self.screen):
+        if quit_clicked and buttons_progress >= 1.0:
             return config.STATE_QUIT
         
         return config.STATE_MENU

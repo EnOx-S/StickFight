@@ -35,6 +35,8 @@ class Button:
             (int(width * scale), int(height * scale))
         )
 
+        self.image_original = self.image.copy()
+
         # Créer un rectangle pour la collision
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
@@ -54,12 +56,13 @@ class Button:
                 pass
             _CLICK_SOUND = pygame.mixer.Sound("assets/sounds/button.mp3")
 
-    def draw(self, surface):
+    def draw(self, surface, alpha=255):
         """
         Affiche le bouton et détecte si l'utilisateur a cliqué dessus.
         
         Args:
             surface (pygame.Surface): La surface où afficher le bouton
+            alpha (int): Niveau de transparence (0-255)
             
         Returns:
             bool: True si le bouton a été cliqué, False sinon
@@ -86,6 +89,31 @@ class Button:
             self.clicked = False
 
         # Afficher le bouton
-        surface.blit(self.image, self.rect)
+        image_with_alpha = self.image_original.copy()
+        image_with_alpha.set_alpha(alpha)
+
+        surface.blit(image_with_alpha, self.rect)
 
         return action
+    
+    def is_clicked(self):
+        """
+        Vérifie si le bouton a été cliqué.
+        
+        Returns:
+            bool: True si le bouton a été cliqué, False sinon
+        """
+        # Obtenir la position de la souris
+        pos = pygame.mouse.get_pos()
+
+        # Vérifier si la souris est sur le bouton et s'il y a un clic
+        if self.rect.collidepoint(pos):
+            if pygame.mouse.get_pressed()[0] and not self.clicked:
+                self.clicked = True
+                return True
+
+        # Réinitialiser le clic quand la souris est relâchée
+        if not pygame.mouse.get_pressed()[0]:
+            self.clicked = False
+
+        return False
